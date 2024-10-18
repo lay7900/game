@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pygame to Web</title>
+    <script src="https://cdn.jsdelivr.net/pyodide/v0.18.1/full/pyodide.js"></script>
+    <style>
+        canvas {
+            border: 1px solid black;
+        }
+    </style>
+</head>
+<body>
+    <h1>웹에서 똥 피하기 게임</h1>
+    <canvas id="gameCanvas" width="600" height="800"></canvas>
+
+    <script>
+        async function main() {
+            // Pyodide 로드
+            let pyodide = await loadPyodide({
+                indexURL: "https://cdn.jsdelivr.net/pyodide/v0.18.1/full/"
+            });
+
+            // 이미지 로드 (로컬 서버나 호스팅된 이미지 경로를 여기에 설정)
+            const poopImage = new Image();
+            poopImage.src = 'https://lay7900.github.io/game/poop.png';;  // 똥 이미지 경로
+
+            const characterImage = new Image();
+            characterImage.src = 'https://lay7900.github.io/game/character.png';  // 캐릭터 이미지 경로
+
+            // 이미지가 모두 로드될 때까지 기다림
+            await new Promise((resolve) => {
+                poopImage.onload = characterImage.onload = resolve;
+            });
+
+            // Python 전역 객체에 이미지를 전달
+            pyodide.globals.set("poopImage", poopImage);
+            pyodide.globals.set("characterImage", characterImage);
+
+            // Python 코드를 실행
+            await pyodide.runPythonAsync(`
+                from js import document, window
+                import random
+                
+                # 캔버스 설정
+                canvas = document.getElementById("gameCanvas")
+                ctx = canvas.getContext("2d")
+                
+                # 색상 정의
+                BLACK = "#000000"
+                WHITE = "#FFFFFF"
+                
+                # 게임 환경 변수
+                width, height = 600, 800
+                player_x, player_y = width // 2, height - 70
+                player_speed = 5
+                poops = []
+                score = 0
+                is_game_over = False
+                touch_x = None
+                
+                # 플레이어 그리기
+                def draw_player():
+                    ctx.drawImage(characterImage, player_x, player_y, 50, 60)  # 캐릭터 이미지로 그리기
+                
+                # 똥 그리기
+                def draw_poop(poop):
+                    ctx.drawImage(poopImage, poop["x"], poop["y"], 50, 50)  # 똥 이미지로 그리기
+                
+                # 화면 업데이트
+                def update_screen():
+                    ctx.fillStyle = BLACK
+                    ctx.fillRect(0, 0, width, height)
+                    draw_player()
+                    for poop in poops:
+                        draw_poop(poop)
+                    ctx.fillStyle = WHITE
+                    ctx.font = "20px Arial"
+                    ctx.fillText(f"Score: {score}", 10, 30)
+                
+                # 플레이어 움직이기 (키보드)
+                def move_player(keys):
+                    global player_x
+                    if "ArrowLeft" in keys and player_x > 0:
+                        player_x -= player_speed
+                    if "ArrowRight" in keys and player_x < width - 50:
+                        player_x += player_speed
+
+                # 플레이어 움직이기 (터치)
+                def move_player_touch():
+                    global player_x, touch_x
+                    if touch_x is not None:
+                        if touch_x < player_x:
+                            player_x -= player_speed
+                        elif touch_x > player_x + 50:
+                            player_x += player_speed
+                
+                # 똥 생성 및 이동
+                def create_poop():
+                    poops.append({"x": random.randint(0, width - 50), "y": -50})
+                
+                def move_poop():
+                    global score, is_game_over
+                    for poop in poops:
+                        poop["y"] += 4
+                        if poop["y"] > height:
+                            poops.remove(poop)
+                            score += 1
+                        # 충돌 검사
+                        if (poop["x"] < player_x < poop["x"] + 50 and player_y < poop["y"] + 50 < player_y + 60):
+                            is_game_over = True
+                
+                # 게임 루프
+                def game_loop(timestamp):
+                    global is_game_over
+                    move_player(keys)  # 키보드 이동 처리
+                    move_player_touch()  # 터치 이동 처리
+                    if random.randint(1, 20) == 1:
+                        create_poop()
+                    move_poop()
+                    update_screen()
+                    if not is_game_over:
+                        window.requestAnimationFrame(game_loop)
+                    else:
+                        ctx.fillStyle = WHITE
+                        ctx.fillText("Game Over!", width // 2 - 100, height // 2)
+                
+                # 게임 시작
+                window.requestAnimationFrame(game_loop)
+                
+                # 키 입력 처리
+                keys = set()
+                def keydown(event):
+                    keys.add(event.key)  # 키를 눌렀을 때 추가
+                    console.log(f"Key pressed: {event.key}")  # 디버깅용 로그 출력
+                
+                def keyup(event):
+                    keys.discard(event.key)  # 키를 뗐을 때 제거
+                
+                window.addEventListener("keydown", keydown)
+                window.addEventListener("keyup", keyup)
+
+                # 터치 입력 처리
+                def touchstart(event):
+                    global touch_x
+                    touch_x = event.touches[0].clientX
+
+                def touchmove(event):
+                    global touch_x
+                    touch_x = event.touches[0].clientX
+                
+                def touchend(event):
+                    global touch_x
+                    touch_x = None  # 터치가 끝났을 때 초기화
+
+                canvas.addEventListener("touchstart", touchstart)
+                canvas.addEventListener("touchmove", touchmove)
+                canvas.addEventListener("touchend", touchend)
+            `);
+        }
+        main();
+    </script>
+</body>
+</html>

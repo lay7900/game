@@ -143,8 +143,8 @@
 
                 # 터치 입력 처리
                 def getCanvasTouchPosition(event):
-                    rect = canvas.getBoundingClientRect()
-                    touch_x = event.touches[0].clientX - rect.left
+                    rect = canvas.getBoundingClientRect()  # 캔버스의 위치
+                    touch_x = event.touches[0].clientX - rect.left  # 캔버스 좌표로 변환
                     return touch_x
 
                 def touchstart(event):

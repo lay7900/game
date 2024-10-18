@@ -22,9 +22,9 @@
                 indexURL: "https://cdn.jsdelivr.net/pyodide/v0.18.1/full/"
             });
 
-            // 이미지 로드 (로컬 서버나 호스팅된 이미지 경로를 여기에 설정)
+            // 이미지 로드 (GitHub Pages에서 호스팅된 이미지 경로)
             const poopImage = new Image();
-            poopImage.src = 'https://lay7900.github.io/game/poop.png';;  // 똥 이미지 경로
+            poopImage.src = 'https://lay7900.github.io/game/poop.png';  // 똥 이미지 경로
 
             const characterImage = new Image();
             characterImage.src = 'https://lay7900.github.io/game/character.png';  // 캐릭터 이미지 경로
@@ -142,13 +142,18 @@
                 window.addEventListener("keyup", keyup)
 
                 # 터치 입력 처리
+                def getCanvasTouchPosition(event):
+                    rect = canvas.getBoundingClientRect()
+                    touch_x = event.touches[0].clientX - rect.left
+                    return touch_x
+
                 def touchstart(event):
                     global touch_x
-                    touch_x = event.touches[0].clientX
+                    touch_x = getCanvasTouchPosition(event)
 
                 def touchmove(event):
                     global touch_x
-                    touch_x = event.touches[0].clientX
+                    touch_x = getCanvasTouchPosition(event)
                 
                 def touchend(event):
                     global touch_x

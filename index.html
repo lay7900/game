@@ -6,14 +6,41 @@
     <title>Pygame to Web</title>
     <script src="https://cdn.jsdelivr.net/pyodide/v0.18.1/full/pyodide.js"></script>
     <style>
-        canvas {
+        #gameWrapper {
+            position: relative;
+            width: 600px;
+            height: 800px;
+            margin: 0 auto;
             border: 1px solid black;
+        }
+
+        #gameCanvas {
+            background-color: black;
+            display: block;
+        }
+
+        #retryButton {
+            display: none;
+            position: absolute;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 10px 20px;
+            font-size: 20px;
+            background-color: #ffcc00;
+            border: none;
+            cursor: pointer;
+            z-index: 100;
         }
     </style>
 </head>
 <body>
-    <h1>웹에서 똥 피하기 게임</h1>
-    <canvas id="gameCanvas" width="600" height="800"></canvas>
+    <h1 style="text-align: center; color: white;">게임 선택</h1>
+    <div id="gameWrapper">
+        <canvas id="gameCanvas" width="600" height="800"></canvas>
+        <button id="retryButton">다시 하기</button> <!-- 다시 하기 버튼 -->
+    </div>
+    <button id="game1" style="display: block; margin: 20px auto;">똥 피하기 게임</button>
+    <button id="game2" style="display: block; margin: 20px auto;">벽돌깨기 게임</button>
 
     <script>
         async function main() {
@@ -22,148 +49,262 @@
                 indexURL: "https://cdn.jsdelivr.net/pyodide/v0.18.1/full/"
             });
 
-            // 이미지 로드 (GitHub Pages에서 호스팅된 이미지 경로)
+            // 이미지 로드 - 웹 서버에서 이미지 제공해야 함
             const poopImage = new Image();
-            poopImage.src = 'https://lay7900.github.io/game/poop.png';  // 똥 이미지 경로
+            poopImage.src = 'http://localhost:8000/poop.png';  // 로컬 서버에서 제공되는 이미지 경로로 설정
 
             const characterImage = new Image();
-            characterImage.src = 'https://lay7900.github.io/game/character.png';  // 캐릭터 이미지 경로
+            characterImage.src = 'http://localhost:8000/character.png';  // 로컬 서버에서 제공되는 이미지 경로로 설정
 
-            // 이미지가 모두 로드될 때까지 기다림
             await new Promise((resolve) => {
                 poopImage.onload = characterImage.onload = resolve;
             });
 
-            // Python 전역 객체에 이미지를 전달
+            // JavaScript에서 Python으로 이미지 전달
             pyodide.globals.set("poopImage", poopImage);
             pyodide.globals.set("characterImage", characterImage);
 
-            // Python 코드를 실행
-            await pyodide.runPythonAsync(`
-                from js import document, window
-                import random
-                
-                # 캔버스 설정
-                canvas = document.getElementById("gameCanvas")
-                ctx = canvas.getContext("2d")
-                
-                # 색상 정의
-                BLACK = "#000000"
-                WHITE = "#FFFFFF"
-                
-                # 게임 환경 변수
-                width, height = 600, 800
-                player_x, player_y = width // 2, height - 70
-                player_speed = 5
-                poops = []
-                score = 0
-                is_game_over = False
-                touch_x = None
-                
-                # 플레이어 그리기
-                def draw_player():
-                    ctx.drawImage(characterImage, player_x, player_y, 50, 60)  # 캐릭터 이미지로 그리기
-                
-                # 똥 그리기
-                def draw_poop(poop):
-                    ctx.drawImage(poopImage, poop["x"], poop["y"], 50, 50)  # 똥 이미지로 그리기
-                
-                # 화면 업데이트
-                def update_screen():
-                    ctx.fillStyle = BLACK
-                    ctx.fillRect(0, 0, width, height)
-                    draw_player()
-                    for poop in poops:
-                        draw_poop(poop)
-                    ctx.fillStyle = WHITE
-                    ctx.font = "20px Arial"
-                    ctx.fillText(f"Score: {score}", 10, 30)
-                
-                # 플레이어 움직이기 (키보드)
-                def move_player(keys):
-                    global player_x
-                    if "ArrowLeft" in keys and player_x > 0:
-                        player_x -= player_speed
-                    if "ArrowRight" in keys and player_x < width - 50:
-                        player_x += player_speed
+            // 다시 하기 버튼
+            const retryButton = document.getElementById("retryButton");
 
-                # 플레이어 움직이기 (터치)
-                def move_player_touch():
-                    global player_x, touch_x
-                    if touch_x is not None:
-                        if touch_x < player_x:
+            // 똥 피하기 게임 실행 함수
+            function runPoopGame() {
+                retryButton.style.display = "none";  // 게임 시작 시 버튼 숨김
+                document.getElementById("gameCanvas").style.display = 'block';
+
+                pyodide.runPythonAsync(`
+                    import random
+                    from js import document, window
+                    canvas = document.getElementById("gameCanvas")
+                    ctx = canvas.getContext("2d")
+
+                    width, height = 600, 800
+                    player_x, player_y = width // 2, height - 70
+                    player_speed = 5
+                    poops = []
+                    score = 0
+                    is_game_over = False
+                    poop_speed_min = 2
+                    poop_speed_max = 4
+
+                    # 캐릭터 그리기 함수
+                    def draw_player():
+                        ctx.drawImage(characterImage, player_x, player_y, 50, 60)
+
+                    # 똥 그리기 함수
+                    def draw_poop(poop):
+                        ctx.drawImage(poopImage, poop["x"], poop["y"], 50, 50)
+
+                    # 화면 업데이트
+                    def update_screen():
+                        ctx.fillStyle = "#000000"
+                        ctx.fillRect(0, 0, width, height)
+                        draw_player()
+                        for poop in poops:
+                            draw_poop(poop)
+                        ctx.fillStyle = "#FFFFFF"
+                        ctx.font = "20px Arial"
+                        ctx.fillText(f"Score: {score}", 10, 30)
+
+                    # 캐릭터 이동
+                    def move_player(keys):
+                        global player_x
+                        if "ArrowLeft" in keys and player_x > 0:
                             player_x -= player_speed
-                        elif touch_x > player_x + 50:
+                        if "ArrowRight" in keys and player_x < width - 50:
                             player_x += player_speed
-                
-                # 똥 생성 및 이동
-                def create_poop():
-                    poops.append({"x": random.randint(0, width - 50), "y": -50})
-                
-                def move_poop():
-                    global score, is_game_over
-                    for poop in poops:
-                        poop["y"] += 4
-                        if poop["y"] > height:
-                            poops.remove(poop)
-                            score += 1
-                        # 충돌 검사
-                        if (poop["x"] < player_x < poop["x"] + 50 and player_y < poop["y"] + 50 < player_y + 60):
+
+                    # 똥 생성
+                    def create_poop():
+                        poops.append({
+                            "x": random.randint(0, width - 50),
+                            "y": -50,
+                            "speed": random.randint(poop_speed_min, poop_speed_max)
+                        })
+
+                    # 똥 이동
+                    def move_poop():
+                        global score, is_game_over
+                        for poop in poops:
+                            poop["y"] += poop["speed"]
+                            if poop["y"] > height:
+                                poops.remove(poop)
+                                score += 1
+                            if (poop["x"] < player_x < poop["x"] + 50 and player_y < poop["y"] + 50 < player_y + 60):
+                                is_game_over = True
+
+                    # 게임 루프
+                    def game_loop(timestamp):
+                        global is_game_over
+                        move_player(keys)
+                        if random.randint(1, 20) == 1:
+                            create_poop()
+                        move_poop()
+                        update_screen()
+                        if not is_game_over:
+                            window.requestAnimationFrame(game_loop)
+                        else:
+                            ctx.fillStyle = "#FFFFFF"
+                            ctx.fillText("Game Over!", width // 2 - 100, height // 2)
+                            window.retryButton.style.display = "block"
+                            window.retryButton.style.top = (height // 2 + 40) + "px"  # 게임 오버 아래에 버튼 표시
+
+                    window.requestAnimationFrame(game_loop)
+
+                    keys = set()
+                    def keydown(event):
+                        keys.add(event.key)
+
+                    def keyup(event):
+                        keys.discard(event.key)
+
+                    window.addEventListener("keydown", keydown)
+                    window.addEventListener("keyup", keyup)
+                `);
+            }
+
+            // 벽돌깨기 게임 실행 함수
+            function runBrickBreakerGame() {
+                retryButton.style.display = "none";  // 게임 시작 시 버튼 숨김
+                document.getElementById("gameCanvas").style.display = 'block';
+
+                pyodide.runPythonAsync(`
+                    from js import document, window
+                    import random
+
+                    canvas = document.getElementById("gameCanvas")
+                    ctx = canvas.getContext("2d")
+
+                    width, height = 600, 800
+                    paddle_x, paddle_y = width // 2 - 40, height - 20
+                    paddle_speed = 10
+                    ball_x, ball_y = width // 2, height // 2
+                    ball_dx, ball_dy = 5, -5
+                    bricks = []
+                    ROWS, COLS = 5, 8
+                    brick_width, brick_height = 60, 20
+                    score = 0
+                    is_game_over = False
+
+                    # 벽돌 생성
+                    for row in range(ROWS):
+                        for col in range(COLS):
+                            bricks.append({
+                                "x": col * (brick_width + 10) + 30,
+                                "y": row * (brick_height + 5) + 30,
+                                "color": "#FF0000"
+                            })
+
+                    # 패들 그리기 함수
+                    def draw_paddle():
+                        ctx.fillStyle = "#00FF00"
+                        ctx.fillRect(paddle_x, paddle_y, 80, 20)
+
+                    # 공 그리기 함수
+                    def draw_ball():
+                        ctx.beginPath()
+                        ctx.arc(ball_x, ball_y, 10, 0, 3.14 * 2)
+                        ctx.fillStyle = "#FFFFFF"
+                        ctx.fill()
+                        ctx.closePath()
+
+                    # 벽돌 그리기 함수
+                    def draw_bricks():
+                        for brick in bricks:
+                            ctx.fillStyle = brick["color"]
+                            ctx.fillRect(brick["x"], brick["y"], brick_width, brick_height)
+
+                    # 화면 업데이트
+                    def update_screen():
+                        ctx.clearRect(0, 0, width, height)
+                        ctx.fillStyle = "#000000"
+                        ctx.fillRect(0, 0, width, height)
+                        draw_paddle()
+                        draw_ball()
+                        draw_bricks()
+                        ctx.fillStyle = "#FFFFFF"
+                        ctx.font = "20px Arial"
+                        ctx.fillText(f"Score: {score}", 10, 30)
+
+                    # 공 이동
+                    def move_ball():
+                        global ball_x, ball_y, ball_dx, ball_dy, is_game_over
+                        ball_x += ball_dx
+                        ball_y += ball_dy
+                        if ball_x <= 0 or ball_x >= width:
+                            ball_dx = -ball_dx
+                        if ball_y <= 0:
+                            ball_dy = -ball_dy
+                        if ball_y >= height:
                             is_game_over = True
-                
-                # 게임 루프
-                def game_loop(timestamp):
-                    global is_game_over
-                    move_player(keys)  # 키보드 이동 처리
-                    move_player_touch()  # 터치 이동 처리
-                    if random.randint(1, 20) == 1:
-                        create_poop()
-                    move_poop()
-                    update_screen()
-                    if not is_game_over:
-                        window.requestAnimationFrame(game_loop)
-                    else:
-                        ctx.fillStyle = WHITE
-                        ctx.fillText("Game Over!", width // 2 - 100, height // 2)
-                
-                # 게임 시작
-                window.requestAnimationFrame(game_loop)
-                
-                # 키 입력 처리
-                keys = set()
-                def keydown(event):
-                    keys.add(event.key)  # 키를 눌렀을 때 추가
-                    console.log(f"Key pressed: {event.key}")  # 디버깅용 로그 출력
-                
-                def keyup(event):
-                    keys.discard(event.key)  # 키를 뗐을 때 제거
-                
-                window.addEventListener("keydown", keydown)
-                window.addEventListener("keyup", keyup)
 
-                # 터치 입력 처리
-                def getCanvasTouchPosition(event):
-                    rect = canvas.getBoundingClientRect()  # 캔버스의 위치
-                    touch_x = event.touches[0].clientX - rect.left  # 캔버스 좌표로 변환
-                    return touch_x
+                    # 충돌 처리 함수
+                    def check_collision():
+                        global ball_dx, ball_dy, score
+                        for brick in bricks:
+                            if brick["x"] < ball_x < brick["x"] + brick_width and brick["y"] < ball_y < brick["y"] + brick_height:
+                                bricks.remove(brick)
+                                ball_dy = -ball_dy
+                                score += 1
+                                break
+                        if paddle_x < ball_x < paddle_x + 80 and paddle_y < ball_y + 10 < paddle_y + 20:
+                            ball_dy = -ball_dy
 
-                def touchstart(event):
-                    global touch_x
-                    touch_x = getCanvasTouchPosition(event)
+                    # 패들 이동
+                    def move_paddle(keys):
+                        global paddle_x
+                        if "ArrowLeft" in keys and paddle_x > 0:
+                            paddle_x -= paddle_speed
+                        if "ArrowRight" in keys and paddle_x < width - 80:
+                            paddle_x += paddle_speed
 
-                def touchmove(event):
-                    global touch_x
-                    touch_x = getCanvasTouchPosition(event)
-                
-                def touchend(event):
-                    global touch_x
-                    touch_x = None  # 터치가 끝났을 때 초기화
+                    # 게임 루프
+                    def game_loop(timestamp):
+                        global is_game_over
+                        if not is_game_over:
+                            move_ball()
+                            move_paddle(keys)
+                            check_collision()
+                            update_screen()
+                            window.requestAnimationFrame(game_loop)
+                        else:
+                            ctx.fillStyle = "#FFFFFF"
+                            ctx.font = "40px Arial"
+                            ctx.fillText("Game Over!", width // 2 - 100, height // 2)
+                            window.retryButton.style.display = "block"
+                            window.retryButton.style.top = (height // 2 + 40) + "px"  # 게임 오버 아래에 버튼 표시
 
-                canvas.addEventListener("touchstart", touchstart)
-                canvas.addEventListener("touchmove", touchmove)
-                canvas.addEventListener("touchend", touchend)
-            `);
+                    keys = set()
+                    def keydown(event):
+                        keys.add(event.key)
+
+                    def keyup(event):
+                        keys.discard(event.key)
+
+                    window.addEventListener("keydown", keydown)
+                    window.addEventListener("keyup", keyup)
+
+                    window.requestAnimationFrame(game_loop)
+                `);
+            }
+
+            // 게임 버튼 설정
+            document.getElementById("game1").addEventListener("click", function() {
+                runPoopGame();  // 똥 피하기 게임 실행
+            });
+
+            document.getElementById("game2").addEventListener("click", function() {
+                runBrickBreakerGame();  // 벽돌깨기 게임 실행
+            });
+
+            // 다시 하기 버튼 설정
+            retryButton.addEventListener("click", function() {
+                retryButton.style.display = "none";  // 다시 시작 시 버튼 숨김
+                document.getElementById("gameCanvas").style.display = 'none';
+                // 버튼을 누르면 다시 똥 피하기나 벽돌깨기 게임을 선택할 수 있도록 할 수 있음.
+            });
         }
+
         main();
     </script>
 </body>

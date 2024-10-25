@@ -11,6 +11,8 @@
             display: block;
             margin: 0;
             padding: 0;
+            width: 100vw;
+            height: 80vh;
         }
         #retryBtn {
             display: none;
@@ -38,58 +40,54 @@
 
         const baseWidth = 600;
         const baseHeight = 800;
-        const aspectRatio = baseWidth / baseHeight;
 
-        let player = {
-            x: 0,
-            y: 0,
-            width: 50,
-            height: 60,
-            speed: 5,
-            dx: 0
-        };
+        let player = { x: 0, y: 0, width: 50, height: 60, dx: 0 };
+        let scaleFactorX = 1;
+        let scaleFactorY = 1;
+        let poops = [];
+        let score = 0;
+        let gameOver = false;
 
         function resizeCanvas() {
+            const aspectRatio = 3 / 4;
             const windowWidth = window.innerWidth;
-            const windowHeight = window.innerHeight;
+            const windowHeight = window.innerHeight * 0.8;
 
-            if (windowHeight * aspectRatio <= windowWidth) {
-                canvas.height = windowHeight * 0.8;  // 높이를 80%로 줄임
-                canvas.width = canvas.height * aspectRatio;
+            if (windowWidth / windowHeight > aspectRatio) {
+                canvas.height = windowHeight;
+                canvas.width = windowHeight * aspectRatio;
             } else {
                 canvas.width = windowWidth;
                 canvas.height = windowWidth / aspectRatio;
             }
 
-            player.width = 50 * (canvas.width / baseWidth);
-            player.height = 60 * (canvas.height / baseHeight);
+            scaleFactorX = canvas.width / baseWidth;
+            scaleFactorY = canvas.height / baseHeight;
+            player.width = 50 * scaleFactorX;
+            player.height = 60 * scaleFactorY;
             player.x = canvas.width / 2 - player.width / 2;
             player.y = canvas.height - player.height - 20;
         }
 
         window.addEventListener('resize', resizeCanvas);
-        resizeCanvas();  // 처음 로드할 때 캔버스 크기 맞춤
+        resizeCanvas();
 
         const playerImage = new Image();
         playerImage.src = './character.png';
         const poopImage = new Image();
         poopImage.src = './poop.png';
 
-        let poops = [];
-        let score = 0;
-        let gameOver = false;
-
         function drawPlayer() {
             ctx.drawImage(playerImage, player.x, player.y, player.width, player.height);
         }
 
         function createPoop() {
-            let poop = {
+            const poop = {
                 x: Math.random() * (canvas.width - 50),
                 y: -50,
                 width: 50,
                 height: 50,
-                speed: (Math.random() * 3 + 2)
+                speed: (Math.random() * 3 + 2) * scaleFactorY
             };
             poops.push(poop);
         }
@@ -124,17 +122,14 @@
         function updatePlayer() {
             player.x += player.dx;
 
-            if (player.x < 0) {
-                player.x = 0;
-            } else if (player.x + player.width > canvas.width) {
-                player.x = canvas.width - player.width;
-            }
+            if (player.x < 0) player.x = 0;
+            else if (player.x + player.width > canvas.width) player.x = canvas.width - player.width;
         }
 
         function displayScore() {
             ctx.fillStyle = 'white';
-            ctx.font = '20px Arial';
-            ctx.fillText(`Score: ${score}`, 10, 30);
+            ctx.font = `${20 * scaleFactorY}px Arial`;
+            ctx.fillText(`Score: ${score}`, 10 * scaleFactorX, 30 * scaleFactorY);
         }
 
         function clearCanvas() {
@@ -155,20 +150,17 @@
         }
 
         function moveRight() {
-            player.dx = player.speed;
+            player.dx = 5 * scaleFactorX;
         }
 
         function moveLeft() {
-            player.dx = -player.speed;
+            player.dx = -5 * scaleFactorX;
         }
 
         function handleTouchStart(e) {
             const touchX = e.touches[0].clientX;
-            if (touchX < canvas.width / 2) {
-                moveLeft();
-            } else {
-                moveRight();
-            }
+            if (touchX < canvas.width / 2) moveLeft();
+            else moveRight();
         }
 
         function handleTouchEnd() {
@@ -178,25 +170,23 @@
         function init() {
             canvas.addEventListener('touchstart', handleTouchStart);
             canvas.addEventListener('touchend', handleTouchEnd);
-
             setInterval(createPoop, 1000);
             update();
         }
 
         function showGameOverScreen() {
             ctx.fillStyle = 'white';
-            ctx.font = '50px Arial';
-            ctx.fillText('Game Over', canvas.width / 2 - 150, canvas.height / 2);
+            ctx.font = `${50 * scaleFactorY}px Arial`;
+            ctx.fillText('Game Over', canvas.width / 2 - 150 * scaleFactorX, canvas.height / 2);
             retryBtn.style.display = 'block';
         }
 
-        retryBtn.addEventListener('click', function() {
+        retryBtn.addEventListener('click', () => {
             player.x = canvas.width / 2 - player.width / 2;
             player.y = canvas.height - player.height - 20;
             poops = [];
             score = 0;
             gameOver = false;
-
             retryBtn.style.display = 'none';
             update();
         });

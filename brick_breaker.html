@@ -29,9 +29,8 @@
         const paddleWidth = 80;
         const paddleHeight = 16;
         let paddleX = (canvas.width - paddleWidth) / 2;
-        const paddleSpeed = 10;
 
-        let ballRadius = 8;
+        const ballRadius = 8;
         let ballX = canvas.width / 2;
         let ballY = canvas.height - paddleHeight - ballRadius - 10;
         let ballDX = 4;
@@ -106,24 +105,6 @@
             }
         }
 
-        function movePaddleLeft() {
-            if (paddleX > 0) paddleX -= paddleSpeed;
-        }
-
-        function movePaddleRight() {
-            if (paddleX < canvas.width - paddleWidth) paddleX += paddleSpeed;
-        }
-
-        // 터치 이벤트로 패들 이동
-        function handleTouchStart(e) {
-            const touchX = e.touches[0].clientX;
-            if (touchX < canvas.width / 2) {
-                movePaddleLeft();
-            } else {
-                movePaddleRight();
-            }
-        }
-
         // 게임 오버 화면 표시
         function showGameOver(message) {
             gameOverScreen.style.display = "block";
@@ -147,7 +128,25 @@
             window.location.href = "index.html";  // 메인 메뉴로 돌아가기
         });
 
-        document.addEventListener("touchstart", handleTouchStart, false);
+        // 터치 이동 - 드래그로 패들 위치 변경
+        let isDragging = false;
+        canvas.addEventListener("touchstart", (e) => {
+            isDragging = true;
+        });
+
+        canvas.addEventListener("touchmove", (e) => {
+            if (isDragging) {
+                const touchX = e.touches[0].clientX - canvas.getBoundingClientRect().left;
+                paddleX = touchX - paddleWidth / 2;
+
+                if (paddleX < 0) paddleX = 0;
+                if (paddleX + paddleWidth > canvas.width) paddleX = canvas.width - paddleWidth;
+            }
+        });
+
+        canvas.addEventListener("touchend", () => {
+            isDragging = false;
+        });
 
         draw();
     </script>

@@ -11,8 +11,6 @@
             display: block;
             margin: 0;
             padding: 0;
-            width: 100vw;  /* 뷰포트 너비에 맞춤 */
-            height: 80vh;  /* 뷰포트 높이에 맞춤 */
         }
         #retryBtn {
             display: none;
@@ -38,45 +36,44 @@
         const ctx = canvas.getContext('2d');
         const retryBtn = document.getElementById('retryBtn');
 
-        // 기본 해상도 설정
         const baseWidth = 600;
         const baseHeight = 800;
+        const aspectRatio = baseWidth / baseHeight;
 
-        const playerWidth = 50;
-        const playerHeight = 60;
         let player = {
-            x: 0,  // 초기 위치
-            y: 0,  // 초기 위치
-            width: playerWidth,
-            height: playerHeight,
+            x: 0,
+            y: 0,
+            width: 50,
+            height: 60,
             speed: 5,
             dx: 0
         };
 
-        let scaleFactorX = canvas.width / baseWidth;
-        let scaleFactorY = canvas.height / baseHeight;
-
-        // 캔버스 크기를 화면 크기에 맞게 조정
         function resizeCanvas() {
-            canvas.width = window.innerWidth;
-            canvas.height = window.innerHeight;
-            scaleFactorX = canvas.width / baseWidth;
-            scaleFactorY = canvas.height / baseHeight;
+            const windowWidth = window.innerWidth;
+            const windowHeight = window.innerHeight;
 
-            // 캐릭터의 크기와 위치 조정
-            player.width = playerWidth * scaleFactorX * 0.8;
-            player.height = playerHeight * scaleFactorY * 0.8;
+            if (windowHeight * aspectRatio <= windowWidth) {
+                canvas.height = windowHeight * 0.8;  // 높이를 80%로 줄임
+                canvas.width = canvas.height * aspectRatio;
+            } else {
+                canvas.width = windowWidth;
+                canvas.height = windowWidth / aspectRatio;
+            }
+
+            player.width = 50 * (canvas.width / baseWidth);
+            player.height = 60 * (canvas.height / baseHeight);
             player.x = canvas.width / 2 - player.width / 2;
-            player.y = canvas.height - player.height - 20;  // 바닥에 붙지 않게 위치 조정
+            player.y = canvas.height - player.height - 20;
         }
 
         window.addEventListener('resize', resizeCanvas);
         resizeCanvas();  // 처음 로드할 때 캔버스 크기 맞춤
 
         const playerImage = new Image();
-        playerImage.src = './character.png';  
+        playerImage.src = './character.png';
         const poopImage = new Image();
-        poopImage.src = './poop.png';  
+        poopImage.src = './poop.png';
 
         let poops = [];
         let score = 0;
@@ -88,11 +85,11 @@
 
         function createPoop() {
             let poop = {
-                x: Math.random() * (canvas.width - 50 * scaleFactorX),
-                y: -50 * scaleFactorY,
-                width: 50 * scaleFactorX * 0.8,
-                height: 50 * scaleFactorY * 0.8,
-                speed: (Math.random() * 3 + 2) * scaleFactorY
+                x: Math.random() * (canvas.width - 50),
+                y: -50,
+                width: 50,
+                height: 50,
+                speed: (Math.random() * 3 + 2)
             };
             poops.push(poop);
         }
@@ -112,7 +109,6 @@
                     score++;
                 }
 
-                // 플레이어와 충돌 여부 체크
                 if (
                     poop.x < player.x + player.width &&
                     poop.x + poop.width > player.x &&
@@ -137,8 +133,8 @@
 
         function displayScore() {
             ctx.fillStyle = 'white';
-            ctx.font = `${20 * scaleFactorY}px Arial`;
-            ctx.fillText(`Score: ${score}`, 10 * scaleFactorX, 30 * scaleFactorY);
+            ctx.font = '20px Arial';
+            ctx.fillText(`Score: ${score}`, 10, 30);
         }
 
         function clearCanvas() {
@@ -180,31 +176,29 @@
         }
 
         function init() {
-            // 터치 이벤트 추가
             canvas.addEventListener('touchstart', handleTouchStart);
             canvas.addEventListener('touchend', handleTouchEnd);
 
-            setInterval(createPoop, 1000);  // 매초 똥 생성
+            setInterval(createPoop, 1000);
             update();
         }
 
         function showGameOverScreen() {
             ctx.fillStyle = 'white';
-            ctx.font = `${50 * scaleFactorY}px Arial`;
-            ctx.fillText('Game Over', canvas.width / 2 - 150 * scaleFactorX, canvas.height / 2);
-            retryBtn.style.display = 'block';  // "다시 하기" 버튼 표
+            ctx.font = '50px Arial';
+            ctx.fillText('Game Over', canvas.width / 2 - 150, canvas.height / 2);
+            retryBtn.style.display = 'block';
         }
 
         retryBtn.addEventListener('click', function() {
-            // 게임 상태 초기화
             player.x = canvas.width / 2 - player.width / 2;
             player.y = canvas.height - player.height - 20;
             poops = [];
             score = 0;
             gameOver = false;
 
-            retryBtn.style.display = 'none';  // "다시 하기" 버튼 숨김
-            update();  // 게임 다시 시작
+            retryBtn.style.display = 'none';
+            update();
         });
 
         init();

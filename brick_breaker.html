@@ -11,7 +11,7 @@
             display: flex;
             justify-content: center;
             align-items: center;
-            height: 80vh;
+            height: 100vh;
             width: 100vw;
         }
         canvas {
@@ -37,7 +37,7 @@
     </style>
 </head>
 <body>
-    <canvas id="gameCanvas" width="600" height="800"></canvas>
+    <canvas id="gameCanvas"></canvas>
 
     <div id="gameOverScreen">
         <h1 id="gameOverMessage" style="color: white;">게임 오버</h1>
@@ -52,6 +52,7 @@
         const retryBtn = document.getElementById('retryBtn');
         const menuBtn = document.getElementById('menuBtn');
 
+        // 패들 및 공 설정
         const paddleWidth = 80;
         const paddleHeight = 16;
         let paddleX = (canvas.width - paddleWidth) / 2;
@@ -84,6 +85,23 @@
 
         let score = 0;
         let gameOver = false;
+
+        function resizeCanvas() {
+            const aspectRatio = 3 / 4;  // 똥피하기 게임과 동일한 3:4 비율
+            let windowWidth = window.innerWidth;
+            let windowHeight = window.innerHeight;
+
+            if (windowWidth / windowHeight > aspectRatio) {
+                canvas.height = windowHeight;
+                canvas.width = windowHeight * aspectRatio;
+            } else {
+                canvas.width = windowWidth;
+                canvas.height = windowWidth / aspectRatio;
+            }
+        }
+
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();  // 초기화 시 화면 비율 맞춤
 
         function drawBricks() {
             for (let c = 0; c < brickColumnCount; c++) {

@@ -30,9 +30,12 @@
         const baseHeight = 800;
         const aspectRatio = baseWidth / baseHeight;
 
+        let scaleFactorX = 1;
+        let scaleFactorY = 1;
+
         function resizeCanvas() {
             const windowWidth = window.innerWidth;
-            const windowHeight = window.innerHeight * 0.8; // 세로 크기 80%
+            const windowHeight = window.innerHeight * 0.8;  // 세로 크기 80%
 
             if (windowWidth / windowHeight > aspectRatio) {
                 canvas.height = windowHeight;
@@ -41,28 +44,31 @@
                 canvas.width = windowWidth;
                 canvas.height = windowWidth / aspectRatio;
             }
+
+            scaleFactorX = canvas.width / baseWidth;
+            scaleFactorY = canvas.height / baseHeight;
         }
 
         window.addEventListener('resize', resizeCanvas);
         resizeCanvas();  // 페이지가 처음 로드될 때 크기 맞추기
 
-        const paddleWidth = 80;
-        const paddleHeight = 16;
-        let paddleX = (canvas.width - paddleWidth) / 2;
+        let paddleWidth = 80;
+        let paddleHeight = 16;
+        let paddleX = (canvas.width - paddleWidth * scaleFactorX) / 2;
 
-        const ballRadius = 8;
+        let ballRadius = 8;
         let ballX = canvas.width / 2;
-        let ballY = canvas.height - paddleHeight - ballRadius - 10;
-        let ballDX = 4;
-        let ballDY = -4;
+        let ballY = canvas.height - paddleHeight * scaleFactorY - ballRadius * scaleFactorY - 10;
+        let ballDX = 4 * scaleFactorX;
+        let ballDY = -4 * scaleFactorY;
 
         const brickRowCount = 7;
         const brickColumnCount = 8;
-        const brickWidth = 60;
-        const brickHeight = 16;
-        const brickPadding = 10;
-        const brickOffsetTop = 35;
-        const brickOffsetLeft = 35;
+        let brickWidth = 60 * scaleFactorX;
+        let brickHeight = 16 * scaleFactorY;
+        const brickPadding = 10 * scaleFactorX;
+        const brickOffsetTop = 35 * scaleFactorY;
+        const brickOffsetLeft = 35 * scaleFactorX;
         let bricks = [];
 
         for (let c = 0; c < brickColumnCount; c++) {
@@ -92,7 +98,7 @@
 
         function drawPaddle() {
             ctx.beginPath();
-            ctx.rect(paddleX, canvas.height - paddleHeight, paddleWidth, paddleHeight);
+            ctx.rect(paddleX, canvas.height - paddleHeight * scaleFactorY, paddleWidth * scaleFactorX, paddleHeight * scaleFactorY);
             ctx.fillStyle = "blue";
             ctx.fill();
             ctx.closePath();
@@ -100,7 +106,7 @@
 
         function drawBall() {
             ctx.beginPath();
-            ctx.arc(ballX, ballY, ballRadius, 0, Math.PI * 2);
+            ctx.arc(ballX, ballY, ballRadius * scaleFactorX, 0, Math.PI * 2);
             ctx.fillStyle = "white";
             ctx.fill();
             ctx.closePath();
@@ -110,13 +116,14 @@
             ballX += ballDX;
             ballY += ballDY;
 
-            if (ballX + ballDX > canvas.width - ballRadius || ballX + ballDX < ballRadius) {
+            // 벽에 충돌
+            if (ballX + ballDX > canvas.width - ballRadius * scaleFactorX || ballX + ballDX < ballRadius * scaleFactorX) {
                 ballDX = -ballDX;
             }
-            if (ballY + ballDY < ballRadius) {
+            if (ballY + ballDY < ballRadius * scaleFactorY) {
                 ballDY = -ballDY;
-            } else if (ballY + ballDY > canvas.height - ballRadius) {
-                if (ballX > paddleX && ballX < paddleX + paddleWidth) {
+            } else if (ballY + ballDY > canvas.height - ballRadius * scaleFactorY) {
+                if (ballX > paddleX && ballX < paddleX + paddleWidth * scaleFactorX) {
                     ballDY = -ballDY;
                 } else {
                     showGameOver("게임 오버");
@@ -155,10 +162,10 @@
         canvas.addEventListener("touchmove", (e) => {
             if (isDragging) {
                 const touchX = e.touches[0].clientX - canvas.getBoundingClientRect().left;
-                paddleX = touchX - paddleWidth / 2;
+                paddleX = touchX - paddleWidth * scaleFactorX / 2;
 
                 if (paddleX < 0) paddleX = 0;
-                if (paddleX + paddleWidth > canvas.width) paddleX = canvas.width - paddleWidth;
+                if (paddleX + paddleWidth * scaleFactorX > canvas.width) paddleX = canvas.width - paddleWidth * scaleFactorX;
             }
         });
 
